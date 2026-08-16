@@ -14,7 +14,7 @@ button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 
 .game { position: relative; width: 100vw; height: 100dvh; min-height: 100%; overflow: hidden; isolation: isolate; background: #07091c; }
-.backdrop { position: absolute; inset: 0; z-index: -3; background: center / cover no-repeat url("assets/images/start-bg.png"); transition: opacity .45s ease, background-image .35s ease; }
+.backdrop { position: absolute; inset: 0; z-index: -3; background: center / cover no-repeat url("assets/images/start-bg.webp"); transition: opacity .45s ease, background-image .35s ease; }
 .vignette { position: absolute; inset: 0; z-index: -2; pointer-events: none; background: radial-gradient(circle at 50% 44%, transparent 25%, rgba(4,4,20,.24) 70%, rgba(1,2,12,.74) 100%); }
 .sparkles { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
 .spark { position: absolute; width: .4rem; aspect-ratio: 1; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px 4px var(--cyan); opacity: 0; animation: twinkle var(--time) ease-in-out infinite var(--delay); }

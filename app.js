@@ -2,7 +2,7 @@
 
 const rounds = [
   {
-    title: "THE HAUNTED HALL", type: "AFFIRMATIVE SENTENCES", background: "assets/images/hall-bg.png",
+    title: "THE HAUNTED HALL", type: "AFFIRMATIVE SENTENCES", background: "assets/images/hall-bg.webp",
     questions: [
       { sentence: "Emma usually ___ to school by bus.", correct: "goes", options: ["goes", "go", "is going", "going", "is go"], markers: ["usually"] },
       { sentence: "Look! The children ___ in the garden now.", correct: "are playing", options: ["play", "plays", "are playing", "is playing", "playing"], markers: ["Look!", "now"] },
@@ -17,7 +17,7 @@ const rounds = [
     ]
   },
   {
-    title: "THE HAUNTED LIBRARY", type: "NEGATIVE SENTENCES", background: "assets/images/library-bg.png",
+    title: "THE HAUNTED LIBRARY", type: "NEGATIVE SENTENCES", background: "assets/images/library-bg.webp",
     questions: [
       { sentence: "Emma ___ coffee in the morning because she doesn't like it.", correct: "doesn't drink", options: ["don't drink", "doesn't drink", "isn't drinking", "doesn't drinks", "not drink"], markers: [] },
       { sentence: "Look! The children ___ outside now because it is raining.", correct: "aren't playing", options: ["don't play", "doesn't play", "aren't playing", "isn't playing", "not playing"], markers: ["Look!", "now"] },
@@ -32,7 +32,7 @@ const rounds = [
     ]
   },
   {
-    title: "THE GHOST LAB", type: "QUESTIONS", background: "assets/images/lab-bg.png",
+    title: "THE GHOST LAB", type: "QUESTIONS", background: "assets/images/lab-bg.webp",
     questions: [
       { sentence: "___ your brother usually walk to school?", correct: "Does", options: ["Is", "Does", "Do", "Are", "Has"], markers: ["usually"] },
       { sentence: "___ Emma doing her homework now?", correct: "Is", options: ["Does", "Do", "Is", "Are", "Has"], markers: ["now"] },
@@ -49,14 +49,23 @@ const rounds = [
 ];
 
 const ghostImages = [1, 2, 3, 4, 5].map(number => `assets/images/ghost-${number}.png`);
+const fogImages = ["fog-left.png", "fog-center.png", "fog-right.png"].map(name => `assets/images/${name}`);
+
+function createAudio(src, preload = "none") {
+  const sound = new Audio();
+  sound.preload = preload;
+  sound.src = src;
+  return sound;
+}
+
 const audio = {
-  background: new Audio("assets/audio/background.mp3"),
-  beam: new Audio("assets/audio/beam.mp3"),
-  catch: new Audio("assets/audio/ghost-catch.mp3"),
-  correct: new Audio("assets/audio/correct.mp3"),
-  wrong: new Audio("assets/audio/wrong.mp3"),
-  round: new Audio("assets/audio/round-complete.mp3"),
-  victory: new Audio("assets/audio/victory.mp3")
+  background: createAudio("assets/audio/background.mp3", "metadata"),
+  beam: createAudio("assets/audio/beam.mp3"),
+  catch: createAudio("assets/audio/ghost-catch.mp3"),
+  correct: createAudio("assets/audio/correct.mp3"),
+  wrong: createAudio("assets/audio/wrong.mp3"),
+  round: createAudio("assets/audio/round-complete.mp3"),
+  victory: createAudio("assets/audio/victory.mp3")
 };
 audio.background.loop = true;
 
@@ -73,7 +82,7 @@ const elements = {
 
 const state = {
   currentRound: 0, currentQuestion: 0, score: 0, lives: 3, wrongGhostsCaught: 0,
-  inputLocked: false, roundStartScore: 0, volume: .55, muted: false, audioStarted: false,
+  inputLocked: false, roundStartScore: 0, volume: .55, muted: false, audioStarted: false, audioUnlocked: false, musicRequested: false,
   nextTimer: null, screen: "start"
 };
 
@@ -121,7 +130,21 @@ function setBackground(path) {
   elements.backdrop.style.backgroundImage = `url("${path}")`;
 }
 
+function unlockAudio() {
+  if (state.audioUnlocked) return;
+  state.audioUnlocked = true;
+  Object.entries(audio).forEach(([name, sound]) => {
+    if (name !== "background") {
+      sound.preload = "auto";
+      sound.load();
+    }
+  });
+}
+
 function startAudio() {
+  unlockAudio();
+  state.musicRequested = true;
+  if (state.muted || state.volume === 0) return;
   if (!state.audioStarted) {
     state.audioStarted = true;
     audio.background.play().catch(() => { state.audioStarted = false; });
@@ -132,6 +155,7 @@ function startAudio() {
 
 function playSound(name, playbackRate = 1) {
   if (state.muted) return;
+  unlockAudio();
   const source = audio[name];
   if (!source) return;
   source.pause();
@@ -182,6 +206,7 @@ function showIntro() {
 
 function beginRound() {
   startAudio();
+  if (state.currentRound === 0) preloadLaterBackgrounds();
   state.roundStartScore = state.score;
   state.currentQuestion = 0;
   state.lives = 3;
@@ -533,7 +558,7 @@ function goHome() {
   state.lives = 3;
   state.inputLocked = false;
   elements.game.classList.remove("victory-glow");
-  setBackground("assets/images/start-bg.png");
+  setBackground("assets/images/start-bg.webp");
   showScreen("start");
 }
 
@@ -567,12 +592,23 @@ function createAmbientParticles() {
   elements.ambientParticles.append(fragment);
 }
 
-function preloadAssets() {
-  ["assets/images/start-bg.png", ...rounds.map(round => round.background), ...ghostImages, "assets/images/ghost-catcher.png"].forEach(src => {
-    const image = new Image();
-    image.src = src;
-  });
-  Object.values(audio).forEach(sound => { sound.preload = "auto"; });
+const imageCache = new Map();
+
+function cacheImage(src) {
+  if (imageCache.has(src)) return imageCache.get(src);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = src;
+  imageCache.set(src, image);
+  return image;
+}
+
+function preloadStartAssets() {
+  [rounds[0].background, ...ghostImages, "assets/images/ghost-catcher.png", ...fogImages].forEach(cacheImage);
+}
+
+function preloadLaterBackgrounds() {
+  rounds.slice(1).forEach(round => cacheImage(round.background));
 }
 
 function handlePointerMove(event) {
@@ -609,11 +645,18 @@ elements.volume.addEventListener("input", event => {
   if (!state.muted) startAudio();
 });
 elements.game.addEventListener("pointermove", handlePointerMove, { passive: true });
+document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true, passive: true });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.musicRequested && !state.muted) startAudio();
+});
+window.addEventListener("focus", () => {
+  if (state.musicRequested && !state.muted && audio.background.paused) startAudio();
+});
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !elements.howModal.hidden) elements.howModal.hidden = true;
 });
 
 createSparkles();
 createAmbientParticles();
-preloadAssets();
+preloadStartAssets();
 updateAudio();
