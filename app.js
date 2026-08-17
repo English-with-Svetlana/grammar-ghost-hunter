@@ -145,7 +145,9 @@ function setBackground(path) {
 function unlockAudio() {
   if (state.audioUnlocked) return;
   state.audioUnlocked = true;
-  Object.values(audio).forEach(sound => sound.load());
+  Object.values(audio).forEach(sound => {
+    if (sound.networkState === HTMLMediaElement.NETWORK_EMPTY) sound.load();
+  });
 }
 
 function startAudio() {
@@ -603,55 +605,91 @@ function createAmbientParticles() {
 }
 
 const imageCache = new Map();
+const IMAGE_TIMEOUT_MS = 4500;
+const AUDIO_TIMEOUT_MS = 6000;
+const PRELOAD_MAX_MS = 6000;
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function cacheImage(src) {
   if (imageCache.has(src)) return imageCache.get(src);
   const pending = new Promise((resolve, reject) => {
     const image = new Image();
     image.decoding = "async";
-    image.onload = () => resolve(src);
-    image.onerror = () => reject(new Error(`Image failed: ${src}`));
+    let finished = false;
+    const finish = (status, error) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeoutId);
+      image.onload = null;
+      image.onerror = null;
+      if (status === "loaded") {
+        console.log(`[preload] image loaded: ${src}`);
+        resolve(src);
+      } else {
+        console.warn(`[preload] image ${status}: ${src}`);
+        reject(error || new Error(`Image ${status}: ${src}`));
+      }
+    };
+    const timeoutId = setTimeout(() => finish("timeout"), IMAGE_TIMEOUT_MS);
+    image.onload = () => finish("loaded");
+    image.onerror = () => finish("error");
     image.src = src;
   });
   imageCache.set(src, pending);
   return pending;
 }
 
-function preloadAudio(sound) {
+function preloadAudio(name, sound) {
   return new Promise(resolve => {
-    if (sound.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return resolve(true);
     let finished = false;
-    const finish = result => {
+    const finish = status => {
       if (finished) return;
       finished = true;
-      sound.removeEventListener("canplaythrough", ready);
+      clearTimeout(timeoutId);
+      sound.removeEventListener("canplay", ready);
       sound.removeEventListener("error", failed);
-      resolve(result);
+      const method = status === "loaded" ? "log" : "warn";
+      console[method](`[preload] audio ${status}: ${name} (${sound.src})`);
+      resolve(status);
     };
-    const ready = () => finish(true);
-    const failed = () => finish(false);
-    sound.addEventListener("canplaythrough", ready, { once: true });
+    const ready = () => finish("loaded");
+    const failed = () => finish("error");
+    const timeoutId = setTimeout(() => finish("timeout"), AUDIO_TIMEOUT_MS);
+    if (sound.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return finish("loaded");
+    sound.addEventListener("canplay", ready, { once: true });
     sound.addEventListener("error", failed, { once: true });
-    sound.load();
-    setTimeout(() => finish(sound.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA), 12000);
   });
 }
 
-async function preloadGame() {
-  const imagePromise = Promise.allSettled(imageAssets.map(cacheImage));
-  const audioPromise = Promise.all(Object.values(audio).map(preloadAudio));
-  const [imageResults, audioResults] = await Promise.all([imagePromise, audioPromise]);
-  const failedImages = imageResults
-    .map((result, index) => result.status === "rejected" ? imageAssets[index] : null)
-    .filter(Boolean);
-
-  if (failedImages.length) console.warn("Some game images could not be loaded:", failedImages);
-  if (audioResults.some(loaded => !loaded)) console.warn("Some game audio could not be preloaded.");
-
+function showStartScreen() {
+  if (!elements.startButton.disabled) return;
   elements.startButton.disabled = false;
   elements.startButton.setAttribute("aria-disabled", "false");
   elements.loading.classList.add("loaded");
   elements.loading.addEventListener("transitionend", () => elements.loading.remove(), { once: true });
+}
+
+async function preloadGame() {
+  // Audio and non-start images are deliberately fire-and-forget: their state
+  // is logged, but they can never hold the loading screen open.
+  imageAssets.slice(1).forEach(src => { cacheImage(src).catch(() => {}); });
+  Object.entries(audio).forEach(([name, sound]) => { preloadAudio(name, sound); });
+
+  const startBackground = imageAssets[0];
+  const startBackgroundFallback = assetUrl("assets/images/start-bg.png");
+  const criticalImages = cacheImage(startBackground).catch(() =>
+    cacheImage(startBackgroundFallback).then(() => setBackground(startBackgroundFallback))
+  );
+
+  const preloadResult = await Promise.race([
+    criticalImages.then(() => "ready").catch(() => "failed"),
+    delay(PRELOAD_MAX_MS).then(() => "timeout")
+  ]);
+  if (preloadResult === "timeout") console.warn(`[preload] overall timeout after ${PRELOAD_MAX_MS}ms`);
+  showStartScreen();
 
 }
 
@@ -703,6 +741,7 @@ createSparkles();
 createAmbientParticles();
 document.querySelectorAll(".fog-puff, .catcher-image").forEach(image => {
   image.addEventListener("error", () => { image.hidden = true; }, { once: true });
+  if (image.complete && image.naturalWidth === 0) image.hidden = true;
 });
 updateAudio();
 preloadGame();
