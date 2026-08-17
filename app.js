@@ -48,18 +48,29 @@ const rounds = [
   }
 ];
 
-const ghostImages = [1, 2, 3, 4, 5].map(number => `assets/images/ghost-${number}.png`);
-const fogImages = ["fog-left.png", "fog-center.png", "fog-right.png"].map(name => `assets/images/${name}`);
+// Preserve the repository base path on GitHub Pages and inside an iframe.
+const assetUrl = path => new URL(path, document.baseURI).href;
+rounds.forEach(round => { round.background = assetUrl(round.background); });
 
-function createAudio(src, preload = "none") {
+const ghostImages = [1, 2, 3, 4, 5].map(number => assetUrl(`assets/images/ghost-${number}.png`));
+const fogImages = ["fog-left.png", "fog-center.png", "fog-right.png"].map(name => assetUrl(`assets/images/${name}`));
+const imageAssets = [
+  assetUrl("assets/images/start-bg.webp"),
+  ...rounds.map(round => round.background),
+  ...ghostImages,
+  assetUrl("assets/images/ghost-catcher.png"),
+  ...fogImages
+];
+
+function createAudio(src) {
   const sound = new Audio();
-  sound.preload = preload;
-  sound.src = src;
+  sound.preload = "auto";
+  sound.src = assetUrl(src);
   return sound;
 }
 
 const audio = {
-  background: createAudio("assets/audio/background.mp3", "metadata"),
+  background: createAudio("assets/audio/background.mp3"),
   beam: createAudio("assets/audio/beam.mp3"),
   catch: createAudio("assets/audio/ghost-catch.mp3"),
   correct: createAudio("assets/audio/correct.mp3"),
@@ -77,7 +88,8 @@ const elements = {
   catcher: $("catcher"), effectsLayer: $("effectsLayer"), feedback: $("feedback"), crosshair: $("crosshair"),
   aimPivot: $("aimPivot"), muzzleAnchor: $("muzzleAnchor"), ambientParticles: $("ambientParticles"),
   howModal: $("howModal"), soundButton: $("soundButton"), playSoundButton: $("playSoundButton"), volume: $("volumeSlider"),
-  messageKicker: $("messageKicker"), messageTitle: $("messageTitle"), messageText: $("messageText"), messageStats: $("messageStats"), messageButtons: $("messageButtons")
+  messageKicker: $("messageKicker"), messageTitle: $("messageTitle"), messageText: $("messageText"), messageStats: $("messageStats"), messageButtons: $("messageButtons"),
+  loading: $("loadingScreen"), startButton: $("startButton")
 };
 
 const state = {
@@ -133,12 +145,7 @@ function setBackground(path) {
 function unlockAudio() {
   if (state.audioUnlocked) return;
   state.audioUnlocked = true;
-  Object.entries(audio).forEach(([name, sound]) => {
-    if (name !== "background") {
-      sound.preload = "auto";
-      sound.load();
-    }
-  });
+  Object.values(audio).forEach(sound => sound.load());
 }
 
 function startAudio() {
@@ -206,7 +213,6 @@ function showIntro() {
 
 function beginRound() {
   startAudio();
-  if (state.currentRound === 0) preloadLaterBackgrounds();
   state.roundStartScore = state.score;
   state.currentQuestion = 0;
   state.lives = 3;
@@ -263,6 +269,10 @@ function renderQuestion() {
     image.src = ghostImages[index];
     image.alt = "";
     image.draggable = false;
+    image.addEventListener("error", () => {
+      if (image.src !== ghostImages[0]) image.src = ghostImages[0];
+      else image.hidden = true;
+    });
     const answer = document.createElement("span");
     answer.className = "ghost-answer";
     answer.textContent = option;
@@ -558,7 +568,7 @@ function goHome() {
   state.lives = 3;
   state.inputLocked = false;
   elements.game.classList.remove("victory-glow");
-  setBackground("assets/images/start-bg.webp");
+  setBackground(assetUrl("assets/images/start-bg.webp"));
   showScreen("start");
 }
 
@@ -596,19 +606,53 @@ const imageCache = new Map();
 
 function cacheImage(src) {
   if (imageCache.has(src)) return imageCache.get(src);
-  const image = new Image();
-  image.decoding = "async";
-  image.src = src;
-  imageCache.set(src, image);
-  return image;
+  const pending = new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(src);
+    image.onerror = () => reject(new Error(`Image failed: ${src}`));
+    image.src = src;
+  });
+  imageCache.set(src, pending);
+  return pending;
 }
 
-function preloadStartAssets() {
-  [rounds[0].background, ...ghostImages, "assets/images/ghost-catcher.png", ...fogImages].forEach(cacheImage);
+function preloadAudio(sound) {
+  return new Promise(resolve => {
+    if (sound.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return resolve(true);
+    let finished = false;
+    const finish = result => {
+      if (finished) return;
+      finished = true;
+      sound.removeEventListener("canplaythrough", ready);
+      sound.removeEventListener("error", failed);
+      resolve(result);
+    };
+    const ready = () => finish(true);
+    const failed = () => finish(false);
+    sound.addEventListener("canplaythrough", ready, { once: true });
+    sound.addEventListener("error", failed, { once: true });
+    sound.load();
+    setTimeout(() => finish(sound.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA), 12000);
+  });
 }
 
-function preloadLaterBackgrounds() {
-  rounds.slice(1).forEach(round => cacheImage(round.background));
+async function preloadGame() {
+  const imagePromise = Promise.allSettled(imageAssets.map(cacheImage));
+  const audioPromise = Promise.all(Object.values(audio).map(preloadAudio));
+  const [imageResults, audioResults] = await Promise.all([imagePromise, audioPromise]);
+  const failedImages = imageResults
+    .map((result, index) => result.status === "rejected" ? imageAssets[index] : null)
+    .filter(Boolean);
+
+  if (failedImages.length) console.warn("Some game images could not be loaded:", failedImages);
+  if (audioResults.some(loaded => !loaded)) console.warn("Some game audio could not be preloaded.");
+
+  elements.startButton.disabled = false;
+  elements.startButton.setAttribute("aria-disabled", "false");
+  elements.loading.classList.add("loaded");
+  elements.loading.addEventListener("transitionend", () => elements.loading.remove(), { once: true });
+
 }
 
 function handlePointerMove(event) {
@@ -630,7 +674,7 @@ function handlePointerMove(event) {
   elements.catcher.style.setProperty("--aim-x", `${rotation}deg`);
 }
 
-$("startButton").addEventListener("click", () => { startAudio(); state.score = 0; state.currentRound = 0; showIntro(); });
+elements.startButton.addEventListener("click", () => { startAudio(); state.score = 0; state.currentRound = 0; showIntro(); });
 $("howButton").addEventListener("click", () => { elements.howModal.hidden = false; $("closeHowButton").focus(); });
 $("closeHowButton").addEventListener("click", () => { elements.howModal.hidden = true; $("howButton").focus(); });
 elements.howModal.addEventListener("click", event => { if (event.target === elements.howModal) elements.howModal.hidden = true; });
@@ -645,7 +689,6 @@ elements.volume.addEventListener("input", event => {
   if (!state.muted) startAudio();
 });
 elements.game.addEventListener("pointermove", handlePointerMove, { passive: true });
-document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true, passive: true });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && state.musicRequested && !state.muted) startAudio();
 });
@@ -658,5 +701,8 @@ document.addEventListener("keydown", event => {
 
 createSparkles();
 createAmbientParticles();
-preloadStartAssets();
+document.querySelectorAll(".fog-puff, .catcher-image").forEach(image => {
+  image.addEventListener("error", () => { image.hidden = true; }, { once: true });
+});
 updateAudio();
+preloadGame();
