@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b24">
+  <base href="./">
+  <title>Grammar Ghost Hunter</title>
+  <script>
+    // The permanent launcher supplies the current release before this executes.
+    const release = document.documentElement.dataset.release || "direct-preview";
+    window.gameAssetUrl = path => {
+      const url = new URL(path, document.baseURI);
+      url.searchParams.set("v", release);
+      return url.href;
+    };
+    document.documentElement.style.setProperty("--start-background", `url("${gameAssetUrl("assets/images/start-bg.webp")}")`);
+    const homePreload = document.createElement("link");
+    homePreload.rel = "preload";
+    homePreload.as = "image";
+    homePreload.type = "image/webp";
+    homePreload.fetchPriority = "high";
+    homePreload.href = gameAssetUrl("assets/images/start-bg.webp");
+    document.head.append(homePreload);
+    // A parser-inserted stylesheet keeps the existing first-paint styling intact.
+    document.write(`<link rel="stylesheet" href="${gameAssetUrl("styles.css").replace(/&/g, "&amp;")}">`);
+  </script>
+</head>
+<body>
+  <main id="game" class="game" aria-live="polite">
+    <div id="loadingScreen" class="loading-screen" role="status" aria-live="polite">
+      <p>Loading game...</p>
+    </div>
+    <div id="backdrop" class="backdrop"></div>
+    <div class="vignette"></div>
+    <div id="sparkles" class="sparkles" aria-hidden="true"></div>
+    <div id="ambientParticles" class="ambient-particles" aria-hidden="true"></div>
+
+    <section id="startScreen" class="screen start-screen active">
+      <div class="start-card">
+        <p class="eyebrow">PRESENT SIMPLE <span>VS</span> PRESENT CONTINUOUS</p>
+        <h1><span>TENSE</span> GHOST HUNT</h1>
+        <div class="start-menu-wrap">
+          <img class="menu-ghost menu-ghost-left" data-home-src="assets/images/ghost-2.png" alt="" aria-hidden="true" draggable="false">
+          <img class="menu-ghost menu-ghost-right" data-home-src="assets/images/ghost-1.png" alt="" aria-hidden="true" draggable="false">
+        <div class="start-glass panel">
+          <p class="tagline">There are ghosts in the mansion!<br>Find the wrong answers and catch the ghosts!</p>
+          <div class="button-stack">
+            <button class="button primary mode-button" data-round="0" disabled aria-disabled="true"><span class="mode-icon" aria-hidden="true">✓</span><span>AFFIRMATIVE SENTENCES</span></button>
+<button class="button primary mode-button" data-round="1" disabled aria-disabled="true"><span class="mode-icon" aria-hidden="true">×</span><span>NEGATIVE SENTENCES</span></button>
+<button class="button primary mode-button" data-round="2" disabled aria-disabled="true"><span class="mode-icon" aria-hidden="true">?</span><span>QUESTIONS</span></button>
+            <button id="howButton" class="button secondary">HOW TO PLAY</button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="introScreen" class="screen intro-screen">
+      <div class="intro-card panel">
+        <p id="introRound" class="eyebrow"></p>
+        <h2 id="introTitle"></h2>
+        <p id="introType" class="intro-type"></p>
+        <button id="introButton" class="button primary"></button>
+      </div>
+    </section>
+
+    <section id="playScreen" class="screen play-screen">
+    <div class="fog-overlay" aria-hidden="true">
+      <img class="fog-puff fog-puff-left" data-src="assets/images/fog-left.png" alt="">
+      <img class="fog-puff fog-puff-left-mid" data-src="assets/images/fog-center.png" alt="">
+      <img class="fog-puff fog-puff-center" data-src="assets/images/fog-center.png" alt="">
+      <img class="fog-puff fog-puff-center-right" data-src="assets/images/fog-left.png" alt="">
+      <img class="fog-puff fog-puff-right" data-src="assets/images/fog-right.png" alt="">
+      <img class="fog-puff fog-puff-far-right" data-src="assets/images/fog-center.png" alt="">
+    </div>
+      <header class="hud">
+        <div class="hud-stat"><span>SCORE</span><strong id="scoreValue">0</strong></div>
+        <div class="hud-stat"><span>QUESTION</span><strong id="questionValue">1 / 10</strong></div>
+        <div class="hud-stat lives-stat"><span>LIVES</span><strong id="livesValue" aria-label="3 lives">♥ ♥ ♥</strong></div>
+      </header>
+
+      <div id="questionPanel" class="question-panel panel">
+        <p id="sentence" class="sentence"></p>
+        <p class="mission">CATCH 4 WRONG GHOSTS <span>•</span> KEEP THE CORRECT ONE SAFE</p>
+      </div>
+
+      <div id="ghostField" class="ghost-field" aria-label="Answer choices"></div>
+      <div id="feedback" class="feedback" aria-live="assertive"></div>
+      <div id="catcher" class="catcher" aria-hidden="true">
+        <img class="catcher-image" data-src="assets/images/ghost-catcher.png" alt="">
+        <i id="aimPivot" class="aim-pivot"></i>
+        <i id="muzzleAnchor" class="muzzle-anchor"></i>
+      </div>
+      <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
+    </section>
+
+    <section id="messageScreen" class="screen message-screen">
+      <div class="message-card panel">
+        <p id="messageKicker" class="eyebrow"></p>
+        <h2 id="messageTitle"></h2>
+        <p id="messageText"></p>
+        <div id="messageStats" class="message-stats"></div>
+        <div id="messageButtons" class="button-row"></div>
+      </div>
+    </section>
+
+    <div id="effectsLayer" class="effects-layer" aria-hidden="true"></div>
+
+    <div id="howModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="howTitle" hidden>
+      <div class="modal-card panel">
+        <h2 id="howTitle">HOW TO PLAY</h2>
+        <div class="instructions">
+          <p>Read the sentence.</p>
+          <p>5 ghosts have 5 answers.</p>
+          <p>Catch 4 <strong>WRONG</strong> ghosts.</p>
+          <p>Keep the <strong>CORRECT</strong> ghost safe!</p>
+          <p>You have 3 lives.</p>
+        </div>
+        <p class="good-luck">GOOD LUCK, GHOST HUNTER!</p>
+        <button id="closeHowButton" class="button primary">GOT IT!</button>
+      </div>
+    </div>
+
+    <div id="topControls" class="audio-controls panel" aria-label="Home and sound controls">
+      <button id="homeButton" class="home-button" hidden>HOME</button>
+      <div class="audio-categories">
+        <div class="audio-category">
+          <button id="musicButton" class="audio-toggle" aria-label="Mute music" aria-pressed="false">MUSIC</button>
+          <input id="musicVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.35" aria-label="Music volume">
+        </div>
+        <div class="audio-category">
+          <button id="sfxButton" class="audio-toggle" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
+          <input id="sfxVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.25" aria-label="Sound effects volume">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.querySelectorAll("img[data-home-src]").forEach(image => {
+      image.src = gameAssetUrl(image.dataset.homeSrc);
+      image.removeAttribute("data-home-src");
+    });
+    const gameScript = document.createElement("script");
+    gameScript.src = gameAssetUrl("app.js");
+    document.body.append(gameScript);
+  </script>
+</body>
+</html>

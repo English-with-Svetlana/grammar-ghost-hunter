@@ -19,7 +19,7 @@ button:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
 .loading-screen.loaded { opacity: 0; pointer-events: none; }
 
 .game { position: relative; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; overflow: hidden; isolation: isolate; background: #07091c; }
-.backdrop { position: absolute; inset: 0; z-index: -3; background-image: url("assets/images/start-bg.webp"); background-size: cover; background-position: center; background-repeat: no-repeat; transition: opacity .45s ease, background-image .35s ease; }
+.backdrop { position: absolute; inset: 0; z-index: -3; background-image: var(--start-background); background-size: cover; background-position: center; background-repeat: no-repeat; transition: opacity .45s ease, background-image .35s ease; }
 .vignette { position: absolute; inset: 0; z-index: -2; pointer-events: none; background: radial-gradient(circle at 50% 44%, transparent 25%, rgba(4,4,20,.24) 70%, rgba(1,2,12,.74) 100%); }
 .sparkles { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
 .spark { position: absolute; width: .4rem; aspect-ratio: 1; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px 4px var(--cyan); opacity: 0; animation: twinkle var(--time) ease-in-out infinite var(--delay); }
@@ -212,14 +212,16 @@ button:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
 .eyebrow { margin: 0 0 1rem; color: var(--cyan); font-weight: 900; letter-spacing: .22em; font-size: clamp(.65rem, 1.2vw, .95rem); text-shadow: 0 0 12px rgba(98,245,255,.6); }
 .eyebrow span { color: var(--gold); margin: 0 .4em; }
 
-.start-screen { text-align: center; padding: 4vh 5vw; }
+.start-screen { text-align: center; padding: 4vh 5vw; overflow-y: auto; }
+.start-screen.active { justify-content: safe center; }
+.mode-button { padding-inline: .75rem; overflow-wrap: anywhere; }
 .start-card { width: min(94vw, 860px); transform: translateY(-4vh); }
 .start-card > .eyebrow { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.15rem; padding: .55rem 1.15rem; border: 1px solid rgba(120,232,255,.58); border-radius: 999px; background: linear-gradient(135deg, rgba(7,17,53,.78), rgba(40,20,82,.72)); box-shadow: inset 0 0 16px rgba(74,194,255,.12), 0 0 19px rgba(69,196,255,.22); backdrop-filter: blur(8px); }
 .start-card h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(2.65rem, 6.8vw, 5.85rem); line-height: .88; letter-spacing: -.045em; color: white; text-shadow: 0 4px 0 #27357f, 0 0 16px #4bbdff, 0 0 44px rgba(104,66,255,.9); }
 .start-card h1 span { display: block; font-size: .55em; letter-spacing: .19em; color: #dfefff; margin-bottom: .12em; }
 .start-glass { width: min(86vw, 475px); margin: 1.35rem auto 0; padding: 1.05rem 1.2rem 1.15rem; border-radius: 23px; background: linear-gradient(145deg, rgba(5,13,43,.79), rgba(23,12,64,.72)); border-color: rgba(106,224,255,.42); box-shadow: inset 0 0 25px rgba(70,167,255,.08), 0 12px 35px rgba(0,0,20,.42), 0 0 20px rgba(51,183,255,.15); }
 .tagline { margin: 0 auto .9rem; font-size: clamp(.8rem, 1.45vw, 1.02rem); color: #edf7ff; line-height: 1.45; text-shadow: 0 2px 5px #000; }
-.button-stack { display: grid; gap: .65rem; width: min(84vw, 310px); margin: auto; }
+.button-stack { display: grid; gap: .65rem; width: min(100%, 310px); margin: auto; }
 .button { min-height: 48px; padding: .75rem 1.5rem; border-radius: 999px; border: 1px solid rgba(148,239,255,.8); color: white; font-weight: 900; letter-spacing: .08em; cursor: pointer; transition: transform .16s, filter .16s, box-shadow .16s; }
 .button:hover, .button:focus-visible { transform: translateY(-2px) scale(1.02); filter: brightness(1.14); outline: none; }
 .button:active { transform: translateY(1px) scale(.99); }
@@ -325,8 +327,25 @@ button:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
 .instructions p { margin: .45rem; }
 .instructions strong { color: var(--gold); }
 .good-luck { color: var(--cyan); font-weight: 900; margin: 1.4rem 0; }
-.audio-controls { position: absolute; z-index: 210; right: clamp(12px, 1.5vw, 18px); bottom: clamp(12px, 1.5vh, 18px); height: 48px; padding: 5px 9px; border-radius: 999px; display: flex; align-items: center; gap: 7px; }
+.audio-controls { position: absolute; z-index: 210; right: clamp(12px, 1.5vw, 18px); top: clamp(8px, 1.5vh, 16px); height: 48px; padding: 5px 9px; border-radius: 999px; display: flex; align-items: center; gap: 7px; }
 .audio-controls input { width: clamp(65px, 10vw, 110px); accent-color: var(--cyan); cursor: pointer; }
+.home-button { height: 32px; padding: 0 8px; border: 1px solid rgba(119,231,255,.6); border-radius: 999px; background: rgba(19,31,79,.88); color: var(--cyan); font-size: .7rem; font-weight: 900; cursor: pointer; }
+.home-button[hidden] { display: none; }
+.hud { gap: 4px; padding: 0 6px; }
+.hud-stat { min-width: 0; flex: 1; }
+.hud .audio-controls { position: static; flex-shrink: 0; height: 40px; padding: 3px 6px; gap: 5px; }
+.audio-categories { display: grid; gap: 2px; }
+.audio-category { display: flex; align-items: center; gap: 4px; height: 18px; }
+.audio-toggle { width: 48px; height: 18px; padding: 0 3px; border: 1px solid rgba(119,231,255,.6); border-radius: 999px; background: rgba(19,31,79,.88); color: var(--cyan); font-size: .6rem; font-weight: 900; cursor: pointer; }
+.audio-toggle[aria-pressed="true"] { opacity: .6; text-decoration: line-through; }
+.audio-category input { margin: 0; height: 16px; }
+.hud .audio-controls input { width: clamp(40px, 8vw, 90px); min-width: 0; }
+@media (max-width: 400px) {
+  .hud-stat strong { font-size: .85rem; }
+  .lives-stat strong { letter-spacing: 0; }
+  .hud-stat span { letter-spacing: .08em; }
+}
+
 
 @media (pointer: coarse), (max-width: 700px) {
   .ghost { cursor: pointer; }
@@ -352,6 +371,10 @@ button:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
 
 @media (max-height: 520px) {
   .tagline { display: none; }
+  .start-card { transform: none; }
+  .start-glass { margin-top: .75rem; padding: .65rem 1rem; }
+  .button-stack { gap: .4rem; }
+  .button-stack .button { min-height: 40px; padding-block: .5rem; }
   .start-card h1 { font-size: clamp(2.3rem, 10vh, 4rem); }
   .question-panel { top: 64px; min-height: 65px; }
   .ghost-field { inset-top: 138px; inset-bottom: 82px; }
@@ -362,4 +385,33 @@ button:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+/* Home menu refinements. */
+.start-menu-wrap { position: relative; isolation: isolate; width: min(86vw, 495px); margin: 1.6rem auto 0; }
+.start-screen .start-glass { position: relative; z-index: 1; width: 100%; margin: 0; padding: 1.1rem 1.3rem 1rem; }
+.start-screen .tagline { margin-bottom: 1.15rem; font-size: clamp(.9rem, 1.6vw, 1.12rem); line-height: 1.5; }
+.start-screen .button-stack { width: min(100%, 345px); gap: .6rem; }
+.start-screen .mode-button { position: relative; padding-inline: 2.6rem; font-size: clamp(.7rem, 1.4vw, .9rem); }
+.mode-icon { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); width: 1.15rem; font-size: 1.15rem; line-height: 1; color: #e0faff; text-shadow: 0 0 8px var(--cyan); }
+.start-screen #howButton { font-size: .8rem; box-shadow: inset 0 0 12px rgba(76,141,255,.12); }
+.menu-ghost { position: absolute; z-index: 2; width: clamp(120px, calc((100vw - 575px) / 2), 255px); height: auto; top: 24%; opacity: .85; pointer-events: none; filter: drop-shadow(0 0 9px rgba(98,245,255,.3)); transform-origin: center; animation: float var(--float-time) ease-in-out infinite var(--float-delay); }
+.menu-ghost-left { right: calc(100% + 24px); --float-time: 4.07s; --float-delay: -.71s; }
+.menu-ghost-right { left: calc(100% + 24px); top: 28%; --float-time: 4.44s; --float-delay: -1.42s; }
+.game:has(> .start-screen.active) > .audio-controls { height: 56px; padding: 6px 11px; gap: 8px; }
+.game:has(> .start-screen.active) > .audio-controls .audio-categories { gap: 3px; }
+.game:has(> .start-screen.active) > .audio-controls .audio-category { height: 21px; gap: 5px; }
+.game:has(> .start-screen.active) > .audio-controls .audio-toggle { width: 56px; height: 21px; font-size: .7rem; }
+.game:has(> .start-screen.active) > .audio-controls input { width: clamp(76px, 11.7vw, 129px); height: 19px; }
+@media (max-width: 820px), (max-height: 520px) {
+  .menu-ghost { display: none; }
+}
+@media (max-height: 520px) {
+  .start-menu-wrap { margin-top: .75rem; }
+  .start-screen .start-glass { padding: .65rem 1rem; }
+  .start-screen .button-stack { gap: .4rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-ghost { animation-duration: .001ms; animation-iteration-count: 1; }
 }

@@ -49,7 +49,7 @@ const rounds = [
 ];
 
 // Preserve the repository base path on GitHub Pages and inside an iframe.
-const assetUrl = path => new URL(path, document.baseURI).href;
+const assetUrl = path => window.gameAssetUrl(path);
 rounds.forEach(round => { round.background = assetUrl(round.background); });
 
 const ghostImages = [1, 2, 3, 4, 5].map(number => assetUrl(`assets/images/ghost-${number}.png`));
@@ -64,7 +64,7 @@ const imageAssets = [
 
 function createAudio(src) {
   const sound = new Audio();
-  sound.preload = "auto";
+  sound.preload = "none";
   sound.src = assetUrl(src);
   return sound;
 }
@@ -79,6 +79,7 @@ const audio = {
   victory: createAudio("assets/audio/victory.mp3")
 };
 audio.background.loop = true;
+const sfxPlaybackMultipliers = new WeakMap();
 
 const $ = id => document.getElementById(id);
 const elements = {
@@ -87,31 +88,35 @@ const elements = {
   score: $("scoreValue"), question: $("questionValue"), lives: $("livesValue"), sentence: $("sentence"), ghostField: $("ghostField"),
   catcher: $("catcher"), effectsLayer: $("effectsLayer"), feedback: $("feedback"), crosshair: $("crosshair"),
   aimPivot: $("aimPivot"), muzzleAnchor: $("muzzleAnchor"), ambientParticles: $("ambientParticles"),
-  howModal: $("howModal"), soundButton: $("soundButton"), playSoundButton: $("playSoundButton"), volume: $("volumeSlider"),
+  howModal: $("howModal"), musicButton: $("musicButton"), sfxButton: $("sfxButton"), homeButton: $("homeButton"), topControls: $("topControls"), musicVolume: $("musicVolumeSlider"), sfxVolume: $("sfxVolumeSlider"),
   messageKicker: $("messageKicker"), messageTitle: $("messageTitle"), messageText: $("messageText"), messageStats: $("messageStats"), messageButtons: $("messageButtons"),
-  loading: $("loadingScreen"), startButton: $("startButton")
+  loading: $("loadingScreen"), modeButtons: [...document.querySelectorAll(".mode-button")]
 };
 
 const state = {
   currentRound: 0, currentQuestion: 0, score: 0, lives: 3, wrongGhostsCaught: 0,
-  inputLocked: false, roundStartScore: 0, volume: .55, muted: false, audioStarted: false, audioUnlocked: false, musicRequested: false,
-  nextTimer: null, screen: "start"
+  inputLocked: false, roundStartScore: 0, musicVolume: .35, sfxVolume: .25, musicMuted: false, sfxMuted: false, audioStarted: false, audioUnlocked: false, musicRequested: false,
+  nextTimer: null, gameplayTimers: new Set(), gameplayVersion: 0, screen: "start"
 };
 
 try {
-  const savedVolume = Number(localStorage.getItem("grammarGhostVolume"));
-  const savedMuted = localStorage.getItem("grammarGhostMuted");
-  if (Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 1) state.volume = savedVolume;
-  if (savedMuted === "true" || savedMuted === "false") state.muted = savedMuted === "true";
+  ["music", "sfx"].forEach(category => {
+    const savedVolume = localStorage.getItem(`grammarGhost${category}Volume`);
+    const savedMuted = localStorage.getItem(`grammarGhost${category}Muted`);
+    const volume = Number(savedVolume);
+    if (savedVolume !== null && Number.isFinite(volume) && volume >= 0 && volume <= 1) state[`${category}Volume`] = volume;
+    if (savedMuted === "true" || savedMuted === "false") state[`${category}Muted`] = savedMuted === "true";
+  });
 } catch (_) {
   // Storage can be unavailable in privacy-restricted iframe contexts.
 }
-elements.volume.value = String(state.volume);
 
 function saveAudioPreference() {
   try {
-    localStorage.setItem("grammarGhostVolume", String(state.volume));
-    localStorage.setItem("grammarGhostMuted", String(state.muted));
+    ["music", "sfx"].forEach(category => {
+      localStorage.setItem(`grammarGhost${category}Volume`, String(state[`${category}Volume`]));
+      localStorage.setItem(`grammarGhost${category}Muted`, String(state[`${category}Muted`]));
+    });
   } catch (_) {
     // Audio still works normally when storage is blocked.
   }
@@ -136,6 +141,8 @@ function showScreen(name) {
   state.screen = name;
   elements.game.classList.toggle("is-playing", name === "play");
   elements.game.classList.remove("screen-shake");
+  elements.homeButton.hidden = name === "start";
+  (name === "play" ? elements.play.querySelector(".hud") : elements.game).append(elements.topControls);
 }
 
 function setBackground(path) {
@@ -145,58 +152,125 @@ function setBackground(path) {
 function unlockAudio() {
   if (state.audioUnlocked) return;
   state.audioUnlocked = true;
-  Object.values(audio).forEach(sound => {
-    if (sound.networkState === HTMLMediaElement.NETWORK_EMPTY) sound.load();
-  });
+
 }
 
 function startAudio() {
   unlockAudio();
   state.musicRequested = true;
-  if (state.muted || state.volume === 0) return;
+  if (state.musicMuted || state.musicVolume === 0) return;
   if (!state.audioStarted) {
     state.audioStarted = true;
     audio.background.play().catch(() => { state.audioStarted = false; });
-  } else if (audio.background.paused && !state.muted) {
+  } else if (audio.background.paused && !state.musicMuted) {
     audio.background.play().catch(() => {});
   }
 }
 
-function playSound(name, playbackRate = 1) {
-  if (state.muted) return;
+function playSound(name, playbackRate = 1, volumeMultiplier = 1) {
+  if (state.sfxMuted || state.sfxVolume === 0) return;
   unlockAudio();
   const source = audio[name];
   if (!source) return;
   source.pause();
   source.currentTime = 0;
   source.playbackRate = playbackRate;
+  sfxPlaybackMultipliers.set(source, volumeMultiplier);
+  source.volume = state.sfxVolume * .25 * volumeMultiplier * .50;
   source.play().catch(() => {});
 }
 
 function updateAudio() {
-  audio.background.volume = state.muted ? 0 : state.volume * .55;
+  audio.background.volume = state.musicMuted ? 0 : state.musicVolume * .25 * .50;
   Object.entries(audio).forEach(([name, sound]) => {
-    if (name !== "background") sound.volume = state.muted ? 0 : Math.min(1, state.volume * .9);
+    if (name !== "background") sound.volume = state.sfxMuted ? 0 : state.sfxVolume * .25 * (sfxPlaybackMultipliers.get(sound) ?? 1) * .50;
   });
-  const icon = state.muted || state.volume === 0 ? "×" : "♪";
-  const label = state.muted ? "Unmute sound" : "Mute sound";
-  elements.soundButton.textContent = icon;
-  elements.playSoundButton.textContent = icon;
-  [elements.soundButton, elements.playSoundButton].forEach(button => {
+  ["music", "sfx"].forEach(category => {
+    const silent = state[`${category}Muted`] || state[`${category}Volume`] === 0;
+    const label = `${silent ? "Unmute" : "Mute"} ${category === "music" ? "music" : "sound effects"}`;
+    const button = elements[`${category}Button`];
     button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(silent));
     button.title = label;
+    elements[`${category}Volume`].value = String(state[`${category}Volume`]);
   });
 }
 
-function toggleMute() {
-  state.muted = !state.muted;
-  if (!state.muted && state.volume === 0) {
-    state.volume = .55;
-    elements.volume.value = String(state.volume);
-  }
+function toggleMute(category) {
+  const silent = state[`${category}Muted`] || state[`${category}Volume`] === 0;
+  state[`${category}Muted`] = !silent;
+  if (silent && state[`${category}Volume`] === 0) state[`${category}Volume`] = category === "music" ? .35 : .25;
   updateAudio();
   saveAudioPreference();
-  if (!state.muted) startAudio();
+  if (category === "music" && !state.musicMuted) startAudio();
+}
+
+function gameplayTimeout(callback, delay) {
+  const timer = setTimeout(() => {
+    state.gameplayTimers.delete(timer);
+    callback();
+  }, delay);
+  state.gameplayTimers.add(timer);
+  return timer;
+}
+
+function resetGameState() {
+  state.gameplayTimers.forEach(clearTimeout);
+  state.gameplayTimers.clear();
+  clearTimeout(state.nextTimer);
+  state.nextTimer = null;
+  state.gameplayVersion += 1;
+  state.currentQuestion = 0;
+  state.score = 0;
+  state.roundStartScore = 0;
+  state.lives = 3;
+  state.wrongGhostsCaught = 0;
+  state.inputLocked = false;
+  elements.ghostField.replaceChildren();
+  elements.effectsLayer.replaceChildren();
+  elements.feedback.className = "feedback";
+  elements.feedback.textContent = "";
+  elements.catcher.classList.remove("firing");
+  elements.catcher.style.removeProperty("--aim-x");
+  elements.crosshair.style.removeProperty("left");
+  elements.crosshair.style.removeProperty("top");
+  elements.game.classList.remove("victory-glow", "screen-shake");
+  elements.howModal.hidden = true;
+  elements.messageButtons.replaceChildren();
+  Object.entries(audio).forEach(([name, sound]) => {
+    if (name !== "background") { sound.pause(); sound.currentTime = 0; }
+  });
+  updateHud();
+}
+
+async function startMode(roundIndex) {
+  resetGameState();
+  state.currentRound = roundIndex;
+  const version = state.gameplayVersion;
+  startAudio();
+  const requiredImages = [rounds[roundIndex].background, ...ghostImages,
+    assetUrl("assets/images/ghost-catcher.png"), ...fogImages];
+  elements.game.setAttribute("aria-busy", "true");
+  try {
+    await Promise.all([
+      ...requiredImages.map(src => cacheImage(src, 0)),
+      ...Object.entries(audio).map(([name, sound]) => {
+        sound.preload = "auto";
+        if (sound.readyState < HTMLMediaElement.HAVE_CURRENT_DATA && sound.paused) sound.load();
+        return preloadAudio(name, sound);
+      })
+    ]);
+    if (version !== state.gameplayVersion) return;
+    elements.play.querySelectorAll("img[data-src]").forEach(image => {
+      image.src = assetUrl(image.dataset.src);
+      image.removeAttribute("data-src");
+    });
+    showIntro();
+  } catch (error) {
+    console.warn("Selected mode assets could not load; select the mode to retry.", error);
+  } finally {
+    if (version === state.gameplayVersion) elements.game.removeAttribute("aria-busy");
+  }
 }
 
 function showIntro() {
@@ -206,10 +280,10 @@ function showIntro() {
   state.wrongGhostsCaught = 0;
   state.inputLocked = false;
   setBackground(round.background);
-  elements.introRound.textContent = `ROUND ${state.currentRound + 1}`;
+  elements.introRound.textContent = "10 QUESTIONS";
   elements.introTitle.textContent = round.title;
   elements.introType.textContent = round.type;
-  elements.introButton.textContent = state.currentRound === 0 ? "START ROUND" : "CONTINUE HUNTING";
+  elements.introButton.textContent = "START HUNTING";
   showScreen("intro");
 }
 
@@ -407,10 +481,12 @@ function targetGhost(ghost, pointerEvent = null) {
   ghost.classList.add("locked");
   const isCorrect = ghost.dataset.correct === "true";
   if (isCorrect) state.inputLocked = true;
+  const gameplayVersion = state.gameplayVersion;
   requestAnimationFrame(() => {
+    if (gameplayVersion !== state.gameplayVersion) return;
     fireBeam(ghost, isCorrect);
     createImpact(ghost, isCorrect);
-    setTimeout(() => elements.catcher.classList.remove("firing"), 90);
+    gameplayTimeout(() => elements.catcher.classList.remove("firing"), 90);
     if (isCorrect) rejectCorrectGhost(ghost);
     else catchWrongGhost(ghost);
   });
@@ -421,9 +497,9 @@ function catchWrongGhost(ghost) {
   const catcherRect = elements.catcher.getBoundingClientRect();
   ghost.style.setProperty("--catch-x", `${catcherRect.left + catcherRect.width / 2 - ghostRect.left - ghostRect.width / 2}px`);
   ghost.style.setProperty("--catch-y", `${catcherRect.top + catcherRect.height * .25 - ghostRect.top - ghostRect.height / 2}px`);
-  setTimeout(() => ghost.classList.add("caught"), 90);
-  setTimeout(() => playSound("catch", 1.06), 270);
-  setTimeout(() => {
+  gameplayTimeout(() => ghost.classList.add("caught"), 90);
+  gameplayTimeout(() => playSound("catch", 1.06), 270);
+  gameplayTimeout(() => {
     state.score += 100;
     state.wrongGhostsCaught += 1;
     updateHud();
@@ -436,13 +512,13 @@ function rejectCorrectGhost(ghost) {
   state.inputLocked = true;
   state.lives -= 1;
   updateHud();
-  playSound("wrong");
+  playSound("wrong", 1, .30);
   ghost.classList.add("rejected");
   elements.game.classList.remove("screen-shake");
   void elements.game.offsetWidth;
   elements.game.classList.add("screen-shake");
   showFeedback("WRONG TARGET!", "wrong");
-  setTimeout(() => {
+  gameplayTimeout(() => {
     ghost.classList.remove("locked", "rejected");
     elements.game.classList.remove("screen-shake");
     if (state.lives <= 0) showGameOver();
@@ -454,21 +530,19 @@ function completeQuestion() {
   state.inputLocked = true;
   const correctGhost = elements.ghostField.querySelector('[data-correct="true"]');
   correctGhost?.classList.add("survivor", "locked");
-  playSound("correct");
+  playSound("correct", 1, .30);
   showFeedback("CORRECT!", "correct");
   const question = rounds[state.currentRound].questions[state.currentQuestion];
-  setTimeout(() => { elements.sentence.innerHTML = completedSentence(question); }, 480);
-  state.nextTimer = setTimeout(advanceQuestion, 2980);
+  gameplayTimeout(() => { elements.sentence.innerHTML = completedSentence(question); }, 480);
+  state.nextTimer = gameplayTimeout(advanceQuestion, 2980);
 }
 
 function advanceQuestion() {
   if (state.currentQuestion < 9) {
     state.currentQuestion += 1;
     renderQuestion();
-  } else if (state.currentRound < 2) {
-    showRoundComplete();
   } else {
-    showVictory();
+    showRoundComplete();
   }
 }
 
@@ -513,63 +587,31 @@ function showGameOver() {
 }
 
 function restartRound() {
-  state.score = state.roundStartScore;
-  state.currentQuestion = 0;
-  state.lives = 3;
-  state.inputLocked = false;
-  showScreen("play");
-  renderQuestion();
+  resetGameState();
+  beginRound();
 }
 
 function showRoundComplete() {
-  playSound("round");
-  const finished = state.currentRound;
+  playSound(state.currentRound === 2 ? "victory" : "round", 1, .30);
+  if (state.currentRound === 2) elements.game.classList.add("victory-glow");
   configureMessage({
-    kicker: `ROUND ${finished + 1}`,
-    title: `ROUND ${finished + 1} CLEARED!`,
-    text: `${rounds[finished].type} COMPLETE`,
-    stats: [{ label: "SCORE", value: state.score.toLocaleString("en-US") }],
-    buttons: [{ label: "CONTINUE", kind: "primary", action: () => { state.currentRound += 1; showIntro(); } }]
-  });
-}
-
-function showVictory() {
-  playSound("victory");
-  elements.game.classList.add("victory-glow");
-  configureMessage({
-    kicker: "30 / 30 COMPLETED",
-    title: "HAUNTING CLEARED!",
-    text: "YOU ARE A GRAMMAR GHOST HUNTER!",
+    kicker: rounds[state.currentRound].title,
+    title: "MINI-GAME COMPLETE!",
+    text: `${rounds[state.currentRound].type} COMPLETE`,
     stats: [
-      { label: "FINAL SCORE", value: state.score.toLocaleString("en-US") },
-      { label: "COMPLETED", value: "30 / 30" },
-      { label: "LIVES", value: `${state.lives} ♥` }
+      { label: "SCORE", value: state.score.toLocaleString("en-US") },
+      { label: "COMPLETED", value: "10 / 10" }
     ],
     buttons: [
-      { label: "PLAY AGAIN", kind: "primary", action: playAgain },
+      { label: "PLAY AGAIN", kind: "primary", action: restartRound },
       { label: "HOME", action: goHome }
     ]
   });
 }
 
-function playAgain() {
-  state.currentRound = 0;
-  state.currentQuestion = 0;
-  state.score = 0;
-  state.lives = 3;
-  state.roundStartScore = 0;
-  elements.game.classList.remove("victory-glow");
-  showIntro();
-}
-
 function goHome() {
-  clearTimeout(state.nextTimer);
+  resetGameState();
   state.currentRound = 0;
-  state.currentQuestion = 0;
-  state.score = 0;
-  state.lives = 3;
-  state.inputLocked = false;
-  elements.game.classList.remove("victory-glow");
   setBackground(assetUrl("assets/images/start-bg.webp"));
   showScreen("start");
 }
@@ -613,7 +655,7 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function cacheImage(src) {
+function cacheImage(src, timeoutMs = IMAGE_TIMEOUT_MS) {
   if (imageCache.has(src)) return imageCache.get(src);
   const pending = new Promise((resolve, reject) => {
     const image = new Image();
@@ -625,6 +667,7 @@ function cacheImage(src) {
       clearTimeout(timeoutId);
       image.onload = null;
       image.onerror = null;
+      if (status !== "loaded") imageCache.delete(src);
       if (status === "loaded") {
         console.log(`[preload] image loaded: ${src}`);
         resolve(src);
@@ -633,7 +676,7 @@ function cacheImage(src) {
         reject(error || new Error(`Image ${status}: ${src}`));
       }
     };
-    const timeoutId = setTimeout(() => finish("timeout"), IMAGE_TIMEOUT_MS);
+    const timeoutId = timeoutMs ? setTimeout(() => finish("timeout"), timeoutMs) : null;
     image.onload = () => finish("loaded");
     image.onerror = () => finish("error");
     image.src = src;
@@ -665,18 +708,18 @@ function preloadAudio(name, sound) {
 }
 
 function showStartScreen() {
-  if (!elements.startButton.disabled) return;
-  elements.startButton.disabled = false;
-  elements.startButton.setAttribute("aria-disabled", "false");
+  if (!elements.modeButtons[0].disabled) return;
+  elements.modeButtons.forEach(button => {
+    button.disabled = false;
+    button.setAttribute("aria-disabled", "false");
+  });
   elements.loading.classList.add("loaded");
   elements.loading.addEventListener("transitionend", () => elements.loading.remove(), { once: true });
 }
 
 async function preloadGame() {
-  // Audio and non-start images are deliberately fire-and-forget: their state
-  // is logged, but they can never hold the loading screen open.
-  imageAssets.slice(1).forEach(src => { cacheImage(src).catch(() => {}); });
-  Object.entries(audio).forEach(([name, sound]) => { preloadAudio(name, sound); });
+  // Only the home background and its two existing ghosts are needed initially.
+  ghostImages.slice(0, 2).forEach(src => { cacheImage(src).catch(() => {}); });
 
   const startBackground = imageAssets[0];
   const startBackgroundFallback = assetUrl("assets/images/start-bg.png");
@@ -712,26 +755,30 @@ function handlePointerMove(event) {
   elements.catcher.style.setProperty("--aim-x", `${rotation}deg`);
 }
 
-elements.startButton.addEventListener("click", () => { startAudio(); state.score = 0; state.currentRound = 0; showIntro(); });
+elements.modeButtons.forEach(button => {
+  button.addEventListener("click", () => startMode(Number(button.dataset.round)));
+});
 $("howButton").addEventListener("click", () => { elements.howModal.hidden = false; $("closeHowButton").focus(); });
 $("closeHowButton").addEventListener("click", () => { elements.howModal.hidden = true; $("howButton").focus(); });
 elements.howModal.addEventListener("click", event => { if (event.target === elements.howModal) elements.howModal.hidden = true; });
 elements.introButton.addEventListener("click", beginRound);
-elements.soundButton.addEventListener("click", toggleMute);
-elements.playSoundButton.addEventListener("click", toggleMute);
-elements.volume.addEventListener("input", event => {
-  state.volume = Number(event.target.value);
-  state.muted = state.volume === 0;
-  updateAudio();
-  saveAudioPreference();
-  if (!state.muted) startAudio();
+elements.homeButton.addEventListener("click", goHome);
+["music", "sfx"].forEach(category => {
+  elements[`${category}Button`].addEventListener("click", () => toggleMute(category));
+  elements[`${category}Volume`].addEventListener("input", event => {
+    state[`${category}Volume`] = Number(event.target.value);
+    state[`${category}Muted`] = state[`${category}Volume`] === 0;
+    updateAudio();
+    saveAudioPreference();
+    if (category === "music" && !state.musicMuted) startAudio();
+  });
 });
 elements.game.addEventListener("pointermove", handlePointerMove, { passive: true });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && state.musicRequested && !state.muted) startAudio();
+  if (document.visibilityState === "visible" && state.musicRequested && !state.musicMuted) startAudio();
 });
 window.addEventListener("focus", () => {
-  if (state.musicRequested && !state.muted && audio.background.paused) startAudio();
+  if (state.musicRequested && !state.musicMuted && audio.background.paused) startAudio();
 });
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !elements.howModal.hidden) elements.howModal.hidden = true;
@@ -741,7 +788,7 @@ createSparkles();
 createAmbientParticles();
 document.querySelectorAll(".fog-puff, .catcher-image").forEach(image => {
   image.addEventListener("error", () => { image.hidden = true; }, { once: true });
-  if (image.complete && image.naturalWidth === 0) image.hidden = true;
+  if (image.hasAttribute("src") && image.complete && image.naturalWidth === 0) image.hidden = true;
 });
 updateAudio();
 preloadGame();
