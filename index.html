@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#080b24">
   <title>Grammar Ghost Hunter</title>
   <style id="launcherStyles">
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080b24; color: white; font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; }
-    #gameFrame { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; border: 0; margin: 0; background: #080b24; opacity: 0; }
-    #status { transition: opacity .18s ease; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 2147483647; display: grid; place-content: center; justify-items: center; gap: 1rem; background-color: #080b24; background-image: radial-gradient(ellipse at center, rgba(39,53,127,.25), rgba(4,4,20,.7)); background-size: cover; background-position: center; text-align: center; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #080b24; color: white; font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; }
+    #gameFrame { position: fixed; left: 50%; top: 50%; display: block; border: 0; padding: 0; margin: 0; background: #080b24; opacity: 0; transform-origin: center; }
+    #status { transition: opacity .18s ease; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2147483647; display: grid; place-content: center; justify-items: center; gap: 1rem; background-color: #080b24; background-image: radial-gradient(ellipse at center, rgba(39,53,127,.25), rgba(4,4,20,.7)); background-size: cover; background-position: center; text-align: center; }
     #status::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 44%, transparent 25%, rgba(4,4,20,.24) 70%, rgba(1,2,12,.74)); }
     #status > * { position: relative; }
     .loading-orbit { width: 32px; height: 32px; border: 2px solid rgba(98,245,255,.18); border-top-color: #62f5ff; border-radius: 50%; box-shadow: 0 0 16px rgba(75,192,255,.2); animation: loadingOrbit 1.2s linear infinite; }
@@ -71,6 +72,7 @@
         frame.id = "gameFrame";
         frame.title = "Tense Ghost Hunt";
         frame.setAttribute("allow", "autoplay");
+        frame.setAttribute("scrolling", "no");
         frame.setAttribute("aria-hidden", "true");
         frame.tabIndex = -1;
         await new Promise((resolve, reject) => {
@@ -79,6 +81,7 @@
             waitForHome(frame).then(() => { clearTimeout(timeout); resolve(); }, error => { clearTimeout(timeout); reject(error); });
           }, { once: true });
           frame.srcdoc = html;
+          fitGameFrame(frame);
           document.body.append(frame);
         });
         frame.style.opacity = "1";
@@ -95,6 +98,25 @@
         retry.hidden = false;
       }
     }
+    function fitGameFrame(frame) {
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
+      const fittedWidth = Math.min(viewportWidth, viewportHeight * 16 / 9);
+      // Keep the complete composition readable internally, then scale it to fit.
+      // Larger viewports retain the game's existing responsive sizing.
+      const layoutWidth = Math.max(1280, fittedWidth);
+      const layoutHeight = layoutWidth * 9 / 16;
+      const scale = fittedWidth / layoutWidth;
+      frame.style.width = `${layoutWidth}px`;
+      frame.style.height = `${layoutHeight}px`;
+      frame.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+    const fitVisibleFrame = () => {
+      const frame = document.getElementById("gameFrame");
+      if (frame) fitGameFrame(frame);
+    };
+    window.addEventListener("resize", fitVisibleFrame);
+    new ResizeObserver(fitVisibleFrame).observe(document.documentElement);
     async function waitForHome(frame) {
       const doc = frame.contentDocument;
       const view = frame.contentWindow;
