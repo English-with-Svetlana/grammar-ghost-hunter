@@ -596,7 +596,7 @@ function showRoundComplete() {
   if (state.currentRound === 2) elements.game.classList.add("victory-glow");
   configureMessage({
     kicker: rounds[state.currentRound].title,
-    title: "MINI-GAME COMPLETE!",
+    title: ["THE HALL IS CLEAR!", "THE LIBRARY IS CLEAR!", "THE LAB IS CLEAR!"][state.currentRound],
     text: `${rounds[state.currentRound].type} COMPLETE`,
     stats: [
       { label: "SCORE", value: state.score.toLocaleString("en-US") },
