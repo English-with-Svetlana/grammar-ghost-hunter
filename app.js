@@ -280,7 +280,7 @@ function showIntro() {
   state.wrongGhostsCaught = 0;
   state.inputLocked = false;
   setBackground(round.background);
-  elements.introRound.textContent = "10 QUESTIONS";
+  elements.introRound.textContent = ["10 STATEMENTS", "10 NEGATIVES", "10 QUESTIONS"][state.currentRound];
   elements.introTitle.textContent = round.title;
   elements.introType.textContent = round.type;
   elements.introButton.textContent = "START HUNTING";
