@@ -310,6 +310,7 @@ function completedSentence(question) {
 }
 
 function updateHud() {
+  elements.question.previousElementSibling.textContent = ["STATEMENT", "NEGATIVE", "QUESTION"][state.currentRound];
   elements.score.textContent = state.score.toLocaleString("en-US");
   elements.question.textContent = `${state.currentQuestion + 1} / 10`;
   elements.lives.textContent = [0, 1, 2].map(index => index < state.lives ? "♥" : "♡").join(" ");
