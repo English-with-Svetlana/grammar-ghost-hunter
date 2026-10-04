@@ -13,7 +13,17 @@ const rounds = [
       { sentence: "Sarah sometimes ___ her grandmother after school.", correct: "visits", options: ["visit", "visits", "is visiting", "visiting", "does visits"], markers: ["sometimes"] },
       { sentence: "Be quiet! The baby ___ right now.", correct: "is sleeping", options: ["sleeps", "sleep", "are sleeping", "sleeping", "is sleeping"], markers: ["right now"] },
       { sentence: "Jack and Ben usually ___ football at weekends.", correct: "play", options: ["plays", "are playing", "play", "playing", "is playing"], markers: ["usually", "at weekends"] },
-      { sentence: "Look! Our dog ___ in the lake now.", correct: "is swimming", options: ["swims", "swim", "swimming", "is swimming", "are swimming"], markers: ["Look!", "now"] }
+      { sentence: "Look! Our dog ___ in the lake now.", correct: "is swimming", options: ["swims", "swim", "swimming", "is swimming", "are swimming"], markers: ["Look!", "now"] },
+      { sentence: "My sister usually ___ her homework after dinner.", correct: "does", options: ["does", "do", "is doing", "doing", "are doing"], markers: ["usually"] },
+      { sentence: "Look! The boys ___ their bikes in the park now.", correct: "are riding", options: ["ride", "rides", "are riding", "is riding", "riding"], markers: ["Look!", "now"] },
+      { sentence: "Our teacher always ___ us interesting stories.", correct: "tells", options: ["tell", "tells", "is telling", "telling", "are telling"], markers: ["always"] },
+      { sentence: "Listen! Someone ___ at the door.", correct: "is knocking", options: ["knocks", "knock", "is knocking", "are knocking", "knocking"], markers: ["Listen!"] },
+      { sentence: "I usually ___ my room on Saturday mornings.", correct: "tidy", options: ["tidy", "tidies", "am tidying", "is tidying", "tidying"], markers: ["usually", "on Saturday mornings"] },
+      { sentence: "Mia ___ a book in the garden at the moment.", correct: "is reading", options: ["reads", "read", "is reading", "are reading", "reading"], markers: ["at the moment"] },
+      { sentence: "Our cat often ___ on my bed during the day.", correct: "sleeps", options: ["sleep", "sleeps", "is sleeping", "sleeping", "are sleeping"], markers: ["often"] },
+      { sentence: "Look! The birds ___ over the lake now.", correct: "are flying", options: ["fly", "flies", "are flying", "is flying", "flying"], markers: ["Look!", "now"] },
+      { sentence: "My grandparents usually ___ us at the weekend.", correct: "call", options: ["call", "calls", "are calling", "is calling", "calling"], markers: ["usually", "at the weekend"] },
+      { sentence: "We ___ for our English test this week.", correct: "are studying", options: ["study", "studies", "are studying", "is studying", "studying"], markers: ["this week"] }
     ]
   },
   {
@@ -28,7 +38,17 @@ const rounds = [
       { sentence: "Usually Tom ___ computer games before school.", correct: "doesn't play", options: ["doesn't play", "don't play", "isn't playing", "doesn't plays", "not play"], markers: ["Usually"] },
       { sentence: "Look! The dog ___ now. It is awake.", correct: "isn't sleeping", options: ["doesn't sleep", "don't sleep", "isn't sleeping", "aren't sleeping", "not sleeping"], markers: ["Look!", "now"] },
       { sentence: "My parents ___ meat because they are vegetarians.", correct: "don't eat", options: ["doesn't eat", "aren't eating", "don't eat", "isn't eating", "don't eats"], markers: [] },
-      { sentence: "Anna ___ at home this week. She is staying with her grandmother.", correct: "isn't staying", options: ["doesn't stay", "don't stay", "isn't staying", "aren't staying", "not stay"], markers: ["this week"] }
+      { sentence: "Anna ___ at home this week. She is staying with her grandmother.", correct: "isn't staying", options: ["doesn't stay", "don't stay", "isn't staying", "aren't staying", "not stay"], markers: ["this week"] },
+      { sentence: "Ben ___ milk because he doesn't like it.", correct: "doesn't drink", options: ["don't drink", "doesn't drink", "isn't drinking", "doesn't drinks", "not drink"], markers: [] },
+      { sentence: "Look! The girls ___ for the bus now. They are walking home.", correct: "aren't waiting", options: ["don't wait", "doesn't wait", "aren't waiting", "isn't waiting", "not waiting"], markers: ["Look!", "now"] },
+      { sentence: "We ___ our phones during lessons.", correct: "don't use", options: ["don't use", "doesn't use", "aren't using", "don't uses", "not use"], markers: [] },
+      { sentence: "Listen! Dad ___ at the moment. The kitchen is completely quiet.", correct: "isn't cooking", options: ["doesn't cook", "don't cook", "isn't cooking", "aren't cooking", "not cooking"], markers: ["Listen!", "at the moment"] },
+      { sentence: "My dog ___ on the sofa because it has its own bed.", correct: "doesn't sleep", options: ["don't sleep", "doesn't sleep", "isn't sleeping", "doesn't sleeps", "not sleep"], markers: [] },
+      { sentence: "I ___ my blue jacket today. I'm wearing the black one.", correct: "am not wearing", options: ["don't wear", "doesn't wear", "am not wearing", "isn't wearing", "not wearing"], markers: ["today"] },
+      { sentence: "Kate and Leo ___ to school by car. They usually take the bus.", correct: "don't travel", options: ["don't travel", "doesn't travel", "aren't travelling", "don't travels", "not travel"], markers: ["usually"] },
+      { sentence: "Look! The students ___ now. They are listening to the teacher.", correct: "aren't talking", options: ["don't talk", "doesn't talk", "aren't talking", "isn't talking", "not talking"], markers: ["Look!", "now"] },
+      { sentence: "Sophie ___ cartoons in the evening. She prefers reading.", correct: "doesn't watch", options: ["don't watch", "doesn't watch", "isn't watching", "doesn't watches", "not watch"], markers: ["in the evening"] },
+      { sentence: "We ___ at home this month. We're staying at a hotel.", correct: "aren't living", options: ["don't live", "doesn't live", "aren't living", "isn't living", "not living"], markers: ["this month"] }
     ]
   },
   {
@@ -43,7 +63,17 @@ const rounds = [
       { sentence: "What time ___ Sarah usually get up on school days?", correct: "does", options: ["is", "do", "does", "are", "doing"], markers: ["usually", "on school days"] },
       { sentence: "___ your friends watching TV right now?", correct: "Are", options: ["Do", "Does", "Is", "Are", "Have"], markers: ["right now"] },
       { sentence: "___ you usually have breakfast before school?", correct: "Do", options: ["Are", "Does", "Do", "Is", "Have"], markers: ["usually"] },
-      { sentence: "Listen! ___ Anna singing in her room at the moment?", correct: "Is", options: ["Does", "Is", "Do", "Are", "Has"], markers: ["Listen!", "at the moment"] }
+      { sentence: "Listen! ___ Anna singing in her room at the moment?", correct: "Is", options: ["Does", "Is", "Do", "Are", "Has"], markers: ["Listen!", "at the moment"] },
+      { sentence: "Where ___ your sister usually do her homework?", correct: "does", options: ["does", "do", "is", "are", "doing"], markers: ["usually"] },
+      { sentence: "Look! ___ the boys running to school now?", correct: "Are", options: ["Do", "Does", "Is", "Are", "Have"], markers: ["Look!", "now"] },
+      { sentence: "What ___ you usually do after dinner?", correct: "do", options: ["do", "does", "are", "is", "doing"], markers: ["usually"] },
+      { sentence: "Why ___ Mia wearing a coat today?", correct: "is", options: ["does", "do", "is", "are", "has"], markers: ["today"] },
+      { sentence: "___ your parents often visit your grandparents?", correct: "Do", options: ["Do", "Does", "Are", "Is", "Have"], markers: ["often"] },
+      { sentence: "Listen! What ___ the children talking about at the moment?", correct: "are", options: ["do", "does", "is", "are", "be"], markers: ["Listen!", "at the moment"] },
+      { sentence: "How often ___ Ben help his parents at home?", correct: "does", options: ["does", "do", "is", "are", "doing"], markers: ["How often"] },
+      { sentence: "___ you waiting for someone right now?", correct: "Are", options: ["Do", "Does", "Is", "Are", "Have"], markers: ["right now"] },
+      { sentence: "Where ___ your cat usually sleep?", correct: "does", options: ["does", "do", "is", "are", "doing"], markers: ["usually"] },
+      { sentence: "Look! What ___ those people carrying?", correct: "are", options: ["do", "does", "is", "are", "be"], markers: ["Look!"] }
     ]
   }
 ];
@@ -280,7 +310,7 @@ function showIntro() {
   state.wrongGhostsCaught = 0;
   state.inputLocked = false;
   setBackground(round.background);
-  elements.introRound.textContent = ["10 STATEMENTS", "10 NEGATIVES", "10 QUESTIONS"][state.currentRound];
+  elements.introRound.textContent = `${round.questions.length} ${["STATEMENTS", "NEGATIVES", "QUESTIONS"][state.currentRound]}`;
   elements.introTitle.textContent = round.title;
   elements.introType.textContent = round.type;
   elements.introButton.textContent = "START HUNTING";
@@ -312,7 +342,7 @@ function completedSentence(question) {
 function updateHud() {
   elements.question.previousElementSibling.textContent = ["STATEMENT", "NEGATIVE", "QUESTION"][state.currentRound];
   elements.score.textContent = state.score.toLocaleString("en-US");
-  elements.question.textContent = `${state.currentQuestion + 1} / 10`;
+  elements.question.textContent = `${state.currentQuestion + 1} / ${rounds[state.currentRound].questions.length}`;
   elements.lives.textContent = [0, 1, 2].map(index => index < state.lives ? "♥" : "♡").join(" ");
   elements.lives.setAttribute("aria-label", `${state.lives} ${state.lives === 1 ? "life" : "lives"}`);
 }
@@ -539,7 +569,7 @@ function completeQuestion() {
 }
 
 function advanceQuestion() {
-  if (state.currentQuestion < 9) {
+  if (state.currentQuestion < rounds[state.currentRound].questions.length - 1) {
     state.currentQuestion += 1;
     renderQuestion();
   } else {
@@ -601,7 +631,7 @@ function showRoundComplete() {
     text: `${rounds[state.currentRound].type} COMPLETE`,
     stats: [
       { label: "SCORE", value: state.score.toLocaleString("en-US") },
-      { label: "COMPLETED", value: "10 / 10" }
+      { label: "COMPLETED", value: `${rounds[state.currentRound].questions.length} / ${rounds[state.currentRound].questions.length}` }
     ],
     buttons: [
       { label: "PLAY AGAIN", kind: "primary", action: restartRound },
